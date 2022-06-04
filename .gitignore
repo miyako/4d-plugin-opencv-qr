@@ -2,3 +2,4 @@ opencv-qr/test/userPreferences.*
 opencv-qr/build/*
 *.DS_Store
 opencv-qr/lib/*
+opencv-qr/test/Plugins/opencv-qr.bundle*
