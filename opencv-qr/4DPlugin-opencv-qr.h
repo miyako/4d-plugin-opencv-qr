@@ -13,8 +13,8 @@
 
 #include "4DPluginAPI.h"
 
+#if VERSIONMAC
 #include "TargetConditionals.h"
-
 #if TARGET_CPU_ARM64
 #include "arm/opencv4/opencv2/core.hpp"
 #include "arm/opencv4/opencv2/imgcodecs.hpp"
@@ -26,6 +26,18 @@
 #include "intel/opencv4/opencv2/imgcodecs/macosx.h"
 #include "intel/opencv4/opencv2/objdetect.hpp"
 #endif
+#else
+#include "opencv2/core.hpp"
+#include "opencv2/imgcodecs.hpp"
+#include "opencv2/objdetect.hpp"
+#ifndef max
+#define max(a,b) (((a) > (b)) ? (a) : (b))
+#endif
+#ifndef min
+#define min(a,b) (((a) < (b)) ? (a) : (b))
+#endif
+#endif
+
 
 #if VERSIONMAC
 #import <Accelerate/Accelerate.h>

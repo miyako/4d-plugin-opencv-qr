@@ -44,23 +44,96 @@ void PluginMain(PA_long32 selector, PA_PluginParameters params) {
     typedef Gdiplus::Bitmap *Image;
 #endif
 
+#if VERSIONWIN
+cv::Mat CopyBmpDataToMat(Gdiplus::BitmapData* pi_Data)
+	{
+
+		int s32_CvType;
+		switch (pi_Data->PixelFormat)
+		{
+		case PixelFormat1bppIndexed:
+		case PixelFormat8bppIndexed:
+			// Special case treated separately below
+			break;
+
+		case PixelFormat24bppRGB:  // 24 bit
+			s32_CvType = CV_8UC3;
+			break;
+
+		case PixelFormat32bppRGB:  // 32 bit
+		case PixelFormat32bppARGB: // 32 bit + Alpha channel    
+			s32_CvType = CV_8UC4;
+			break;
+
+		default:
+			throw L"Image format not supported.";
+		}
+
+		cv::Mat i_Mat;
+
+		if (pi_Data->PixelFormat == PixelFormat1bppIndexed) // 1 bit (special case)
+		{
+			i_Mat = cv::Mat(pi_Data->Height, pi_Data->Width, CV_8UC1);
+
+			for (UINT Y = 0; Y<pi_Data->Height; Y++)
+			{
+				BYTE* pu8_Src = (BYTE*)pi_Data->Scan0 + Y * pi_Data->Stride;
+				BYTE* pu8_Dst = i_Mat.ptr<BYTE>(Y);
+
+				BYTE u8_Mask = 0x80;
+				for (UINT X = 0; X<pi_Data->Width; X++)
+				{
+					pu8_Dst[0] = (pu8_Src[0] & u8_Mask) ? 255 : 0;
+					pu8_Dst++;
+
+					u8_Mask >>= 1;
+					if (u8_Mask == 0)
+					{
+						pu8_Src++;
+						u8_Mask = 0x80;
+					}
+				}
+			}
+		}
+		else if (pi_Data->PixelFormat == PixelFormat8bppIndexed) // 8 bit gray scale palette (special case)
+		{
+			i_Mat = cv::Mat(pi_Data->Height, pi_Data->Width, CV_8UC1);
+
+			BYTE* u8_Src = (BYTE*)pi_Data->Scan0;
+			BYTE* u8_Dst = i_Mat.data;
+
+			for (UINT R = 0; R<pi_Data->Height; R++)
+			{
+				memcpy(u8_Dst, u8_Src, pi_Data->Width);
+				u8_Src += pi_Data->Stride;
+				u8_Dst += i_Mat.step;
+			}
+		}
+		else // 24 Bit / 32 Bit
+		{
+			// Create a Mat pointing to external memory
+			cv::Mat i_Ext(pi_Data->Height, pi_Data->Width, s32_CvType, pi_Data->Scan0, pi_Data->Stride);
+
+			// Create a Mat with own memory
+			i_Ext.copyTo(i_Mat);
+		}
+		return i_Mat;
+	}
+#endif
+
 static void imageToMat(Image image, cv::Mat& mat) {
     
     if(image) {
 #if VERSIONMAC
         CGImageToMat(image, mat, false);
 #else
-        auto format = image->GetPixelFormat();
-        if (format == PixelFormat24bppRGB) {
-            int w = image->GetWidth();
-            int h = image->GetHeight();
-            Gdiplus::Rect rcLock(0, 0, w, h);
-            Gdiplus::BitmapData bmpData;
-            if (image->LockBits(&rcLock, Gdiplus::ImageLockModeRead, format, &bmpData) == Gdiplus::Ok) {
-                mat = cv::Mat(h, w, CV_8UC3, static_cast<unsigned char*>(bmpData.Scan0), bmpData.Stride).clone();
-                image->UnlockBits(&bmpData);
-            }
-        }
+
+		Gdiplus::BitmapData i_Data;
+		Gdiplus::Rect k_Rect(0, 0, image->GetWidth(), image->GetHeight());
+		if (!image->LockBits(&k_Rect, Gdiplus::ImageLockModeRead, image->GetPixelFormat(), &i_Data)) {
+			mat = CopyBmpDataToMat(&i_Data);
+			image->UnlockBits(&i_Data);
+		}
 #endif
     }
 }
@@ -79,9 +152,9 @@ static void disposeImage(Image image) {
 
 static Image pictureToImage(PA_Picture p) {
     
-    if(!PA_IsCompiled(0))
+    if(!PA_IsCompiled(0)) 
     {
-        return (CGImageRef)PA_CreateNativePictureForScreen(p);
+        return (Image)PA_CreateNativePictureForScreen(p);
         /* this image needs to be released */
     }else
     {

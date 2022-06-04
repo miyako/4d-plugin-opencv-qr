@@ -1,0 +1,11 @@
+{
+    "name": "opencv-qr",
+    "id": 20000,
+    "commands": [
+        {
+            "theme": "opencv-qr",
+            "syntax": "opencv decode qrcode(&P):J",
+            "threadSafe": true
+        }
+    ]
+}
