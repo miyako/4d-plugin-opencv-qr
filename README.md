@@ -17,5 +17,5 @@ Property|Type|Description
 status | Object|
 status.success | Boolean|
 status.values | Collection of Text|
-status.images | Collection of Pictures (PNG)|
+status.images | Collection of Pictures|
 
