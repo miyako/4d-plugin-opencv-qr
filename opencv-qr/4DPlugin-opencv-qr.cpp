@@ -213,7 +213,8 @@ static Image pictureToImage(PA_Picture p) {
 void opencv_decode_qrcode(PA_PluginParameters params) {
 
     PA_Picture p = PA_GetPictureParameter(params, 1);
-
+    double eps = PA_GetDoubleParameter(params, 2);
+    
     p = PA_DuplicatePicture(p, 1);
     
     PA_ObjectRef status = PA_CreateObject();
@@ -230,6 +231,11 @@ void opencv_decode_qrcode(PA_PluginParameters params) {
     std::vector<cv::Point> points;
     std::vector<cv::Mat> straight_barcodes;
     
+    if(eps != 0.0) {
+        detector.setEpsX(eps);
+        detector.setEpsY(eps);
+    }
+
     bool success =  detector.detectAndDecodeMulti(mat, decoded_info, points, straight_barcodes);
     
     ob_set_b(status, L"success", success);
@@ -261,6 +267,20 @@ void opencv_decode_qrcode(PA_PluginParameters params) {
             }
         }
         ob_set_c(status, L"images", images);
+        
+        PA_CollectionRef corners = PA_CreateCollection();
+        for(auto it = points.begin(); it != points.end(); ++it) {
+            cv::Point point = *it;
+            PA_ObjectRef xy = PA_CreateObject();
+            ob_set_n(xy, L"x", point.x);
+            ob_set_n(xy, L"y", point.y);
+            PA_Variable v = PA_CreateVariable(eVK_Object);
+            PA_SetObjectVariable(&v, xy);
+            PA_SetCollectionElement(corners, PA_GetCollectionLength(corners), v);
+            PA_ClearVariable(&v);
+        }
+        ob_set_c(status, L"corners", corners);
+
     }
         
     disposeImage(image);
