@@ -21,9 +21,9 @@ void PluginMain(PA_long32 selector, PA_PluginParameters params) {
 			// --- opencv-qr
             
 			case 1 :
-				opencv_decode_qrcode(params);
+            case 2 :
+				opencv_decode_qrcode(params, selector);
 				break;
-
         }
 
 	}
@@ -210,7 +210,7 @@ static Image pictureToImage(PA_Picture p) {
 
 }
 
-void opencv_decode_qrcode(PA_PluginParameters params) {
+void opencv_decode_qrcode(PA_PluginParameters params, PA_long32 selector) {
 
     PA_Picture p = PA_GetPictureParameter(params, 1);
     double eps = PA_GetDoubleParameter(params, 2);
@@ -235,39 +235,48 @@ void opencv_decode_qrcode(PA_PluginParameters params) {
         detector.setEpsX(eps);
         detector.setEpsY(eps);
     }
-
-    bool success =  detector.detectAndDecodeMulti(mat, decoded_info, points, straight_barcodes);
+    
+    bool success;
+    
+    if(selector == 1) {
+        success = detector.detectAndDecodeMulti(mat, decoded_info, points, straight_barcodes);
+    }else{
+        success = detector.detectMulti(mat, points);
+    }
     
     ob_set_b(status, L"success", success);
     
     if(success) {
-        PA_CollectionRef values = PA_CreateCollection();
-        for(auto it = decoded_info.begin(); it != decoded_info.end(); ++it) {
-            std::string info = *it;
-            PA_Variable v = PA_CreateVariable(eVK_Unistring);
-            C_TEXT u;
-            u.setUTF8String((const uint8_t *)info.c_str(), (uint32_t)info.length());
-            PA_Unistring ustr = PA_CreateUnistring((PA_Unichar *)u.getUTF16StringPtr());
-            PA_SetStringVariable(&v, &ustr);
-            PA_SetCollectionElement(values, PA_GetCollectionLength(values), v);
-            PA_ClearVariable(&v);
-        }
-        ob_set_c(status, L"values", values);
         
-        PA_CollectionRef images = PA_CreateCollection();
-        for(auto it = straight_barcodes.begin(); it != straight_barcodes.end(); ++it) {
-            cv::Mat image = *it;
-            std::vector<uchar> buf;
-            if(imencode(".png", image, buf)) {
-                PA_Picture straight = PA_CreatePicture(&buf[0], (PA_long32)buf.size());
-                PA_Variable v = PA_CreateVariable(eVK_Picture);
-                PA_SetPictureVariable(&v, straight);
-                PA_SetCollectionElement(images, PA_GetCollectionLength(images), v);
+        if(selector == 1) {
+            PA_CollectionRef values = PA_CreateCollection();
+            for(auto it = decoded_info.begin(); it != decoded_info.end(); ++it) {
+                std::string info = *it;
+                PA_Variable v = PA_CreateVariable(eVK_Unistring);
+                C_TEXT u;
+                u.setUTF8String((const uint8_t *)info.c_str(), (uint32_t)info.length());
+                PA_Unistring ustr = PA_CreateUnistring((PA_Unichar *)u.getUTF16StringPtr());
+                PA_SetStringVariable(&v, &ustr);
+                PA_SetCollectionElement(values, PA_GetCollectionLength(values), v);
                 PA_ClearVariable(&v);
             }
+            ob_set_c(status, L"values", values);
+
+            PA_CollectionRef images = PA_CreateCollection();
+            for(auto it = straight_barcodes.begin(); it != straight_barcodes.end(); ++it) {
+                cv::Mat image = *it;
+                std::vector<uchar> buf;
+                if(imencode(".png", image, buf)) {
+                    PA_Picture straight = PA_CreatePicture(&buf[0], (PA_long32)buf.size());
+                    PA_Variable v = PA_CreateVariable(eVK_Picture);
+                    PA_SetPictureVariable(&v, straight);
+                    PA_SetCollectionElement(images, PA_GetCollectionLength(images), v);
+                    PA_ClearVariable(&v);
+                }
+            }
+            ob_set_c(status, L"images", images);
         }
-        ob_set_c(status, L"images", images);
-        
+ 
         PA_CollectionRef corners = PA_CreateCollection();
         for(auto it = points.begin(); it != points.end(); ++it) {
             cv::Point point = *it;
@@ -287,4 +296,3 @@ void opencv_decode_qrcode(PA_PluginParameters params) {
     
     PA_ReturnObject(params, status);
 }
-

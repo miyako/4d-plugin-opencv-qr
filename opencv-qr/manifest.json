@@ -6,6 +6,11 @@
             "theme": "opencv-qr",
             "syntax": "opencv decode qrcode(&P;&8):J",
             "threadSafe": true
+        },
+        {
+            "theme": "opencv-qr",
+            "syntax": "opencv detect qrcode(&P;&8):J",
+            "threadSafe": true
         }
     ]
 }

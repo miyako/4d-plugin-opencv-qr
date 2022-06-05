@@ -54,6 +54,6 @@
 
 #pragma mark -
 
-void opencv_decode_qrcode(PA_PluginParameters params);
+void opencv_decode_qrcode(PA_PluginParameters params, PA_long32 selector);
 
 #endif /* PLUGIN_OPENCV_QR_H */
