@@ -9,7 +9,7 @@ Decode QR code with OpenCV.
 #### Syntax
 
 ```4d
-status:=opencv decode qrcode(image)
+status:=opencv decode qrcode(image{;epsilon})
 ```
 
 Property|Type|Description
@@ -18,5 +18,6 @@ status | Object|
 status.success | Boolean|
 status.values | Collection of Text|
 status.images | Collection of Pictures|
+status.corners | Collection of Objects|
 
 [miyako.github.io](https://miyako.github.io/2022/06/03/4d-plugin-opencv-qr.html)
