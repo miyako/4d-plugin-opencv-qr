@@ -8,7 +8,7 @@
 		<dict>
 			<key>hash</key>
 			<data>
-			sB0f7yJwISI6MFrm9CzZAxFruF4=
+			8uAhmO8YrPTBT1SpZVXRZ2F0/Bc=
 			</data>
 			<key>optional</key>
 			<true/>
@@ -19,7 +19,7 @@
 		</data>
 		<key>Resources/manifest.json</key>
 		<data>
-		pQFAuVQc1Q7jihk47KtJT4D+gLU=
+		i7nLUmbmyCarhqxRe2ZguU1mM2Q=
 		</data>
 	</dict>
 	<key>files2</key>
@@ -35,7 +35,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			1fhmcfXY+7GU4pcVse8v188MD5A/H/IxU3Ty2RB7/pA=
+			Vkcle4RS27fHtMQL5Qb5v/lIsmYZYc+cOHtc5lzeH9E=
 			</data>
 			<key>optional</key>
 			<true/>
@@ -51,7 +51,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			aQ0f161ePno6hv5Obts2J1GfYHz8A4vZCDuEhahskHU=
+			C1IveC8KLBtHyo5mmZo0ch59nTnadP5kwTfuI4wTOgQ=
 			</data>
 		</dict>
 		<key>Windows64/opencv-qr.4DX</key>
