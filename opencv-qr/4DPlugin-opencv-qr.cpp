@@ -36,7 +36,6 @@ void PluginMain(PA_long32 selector, PA_PluginParameters params) {
 #pragma mark -
 
 #define CONVERT_PICTURE  (1002)
-#define PICTURE_PROPERTIES (457)
 
 #if VERSIONMAC
     typedef CGImageRef Image;
@@ -221,7 +220,7 @@ void opencv_decode_qrcode(PA_PluginParameters params, PA_long32 selector) {
     
     cv::Mat mat, straight_qrcode;
     
-    Image image = pictureToImage( p);
+    Image image = pictureToImage(p);
     
     imageToMat(image, mat);
     
