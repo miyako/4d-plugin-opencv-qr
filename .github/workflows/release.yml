@@ -56,6 +56,17 @@ jobs:
         with:
           ref: ${{ needs.version.outputs.tag }}
 
+      # lib/windows64 is gitignored (the prebuilt OpenCV/third-party .lib
+      # files are too large for version control) and is what the linker's
+      # LIBPATH in opencv-qr.vcxproj points at. Restore it from the
+      # dedicated release asset before building, or every opencv_*.lib
+      # link fails with LNK1181.
+      - name: restore prebuilt libraries
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/miyako/4d-plugin-opencv-qr/releases/download/0.0.1-lib/windows64.zip" -OutFile windows64.zip
+          Expand-Archive -Path windows64.zip -DestinationPath lib -Force
+
       - name: setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
