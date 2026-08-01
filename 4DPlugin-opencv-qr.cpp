@@ -196,7 +196,7 @@ static Image pictureToImage(PA_Picture p) {
         args[0] = PA_CreateVariable(eVK_Picture);
         PA_SetPictureVariable(&args[0], p);
         args[1] = PA_CreateVariable(eVK_Unistring);
-        PA_Unistring ustr = PA_CreateUnistring((PA_Unichar *)".\0b\0m\0p\0\0\0");
+        PA_Unistring ustr = PA_CreateUnistring((PA_Unichar *)u".bmp");
         PA_SetStringVariable(&args[1], &ustr);
         
         PA_ExecuteCommandByID(CONVERT_PICTURE, args, 2);
@@ -246,9 +246,16 @@ void opencv_decode_qrcode(PA_PluginParameters params, PA_long32 selector) {
     PA_Picture p = PA_GetPictureParameter(params, 1);
     double eps = PA_GetDoubleParameter(params, 2);
     
-    p = PA_DuplicatePicture(p, 1);
-    
     PA_ObjectRef status = PA_CreateObject();
+    
+    if(p == NULL) {
+        ob_set_b(status, L"success", false);
+        ob_set_s(status, L"error", "no picture parameter given");
+        PA_ReturnObject(params, status);
+        return;
+    }
+    
+    p = PA_DuplicatePicture(p, 1);
     
     Image image = NULL;
     bool success = false;
@@ -305,13 +312,7 @@ void opencv_decode_qrcode(PA_PluginParameters params, PA_long32 selector) {
     ob_set_b(status, L"success", success);
     
     if(hasError) {
-        C_TEXT u;
-        u.setUTF8String((const uint8_t *)errorMessage.c_str(), (uint32_t)errorMessage.length());
-        PA_Unistring ustr = PA_CreateUnistring((PA_Unichar *)u.getUTF16StringPtr());
-        PA_Variable v = PA_CreateVariable(eVK_Unistring);
-        PA_SetStringVariable(&v, &ustr);
-        ob_set_c(status, L"error", v);
-        PA_ClearVariable(&v);
+        ob_set_s(status, L"error", errorMessage.c_str());
     }
     
     if(success) {
