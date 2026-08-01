@@ -44,10 +44,10 @@ void PluginMain(PA_long32 selector, PA_PluginParameters params) {
 #endif
 
 #if VERSIONWIN
-cv::Mat CopyBmpDataToMat(Gdiplus::BitmapData* pi_Data)
+cv::Mat CopyBmpDataToMat(Gdiplus::Bitmap* pi_Bitmap, Gdiplus::BitmapData* pi_Data)
 	{
 
-		int s32_CvType;
+		int s32_CvType = 0;
 		switch (pi_Data->PixelFormat)
 		{
 		case PixelFormat1bppIndexed:
@@ -94,18 +94,50 @@ cv::Mat CopyBmpDataToMat(Gdiplus::BitmapData* pi_Data)
 				}
 			}
 		}
-		else if (pi_Data->PixelFormat == PixelFormat8bppIndexed) // 8 bit gray scale palette (special case)
+		else if (pi_Data->PixelFormat == PixelFormat8bppIndexed) // 8 bit indexed palette (special case)
 		{
 			i_Mat = cv::Mat(pi_Data->Height, pi_Data->Width, CV_8UC1);
 
-			BYTE* u8_Src = (BYTE*)pi_Data->Scan0;
-			BYTE* u8_Dst = i_Mat.data;
+			// Source bytes are palette INDICES, not gray intensities.
+			// Resolve each index through the bitmap's real palette instead
+			// of assuming an identity grayscale ramp.
+			BYTE u8_GrayLUT[256] = { 0 };
 
-			for (UINT R = 0; R<pi_Data->Height; R++)
+			if (pi_Bitmap)
 			{
-				memcpy(u8_Dst, u8_Src, pi_Data->Width);
-				u8_Src += pi_Data->Stride;
-				u8_Dst += i_Mat.step;
+				INT s32_PaletteSize = pi_Bitmap->GetPaletteSize();
+				if (s32_PaletteSize > 0)
+				{
+					Gdiplus::ColorPalette* pk_Palette = (Gdiplus::ColorPalette*)malloc(s32_PaletteSize);
+					if (pk_Palette)
+					{
+						if (pi_Bitmap->GetPalette(pk_Palette, s32_PaletteSize) == Gdiplus::Ok)
+						{
+							UINT u32_Count = min(pk_Palette->Count, (UINT)256);
+							for (UINT i = 0; i < u32_Count; i++)
+							{
+								Gdiplus::ARGB k_Argb = pk_Palette->Entries[i];
+								BYTE u8_R = (BYTE)((k_Argb >> 16) & 0xFF);
+								BYTE u8_G = (BYTE)((k_Argb >> 8) & 0xFF);
+								BYTE u8_B = (BYTE)(k_Argb & 0xFF);
+								// standard luminance weighting
+								u8_GrayLUT[i] = (BYTE)((u8_R * 299 + u8_G * 587 + u8_B * 114) / 1000);
+							}
+						}
+						free(pk_Palette);
+					}
+				}
+			}
+
+			for (UINT Y = 0; Y<pi_Data->Height; Y++)
+			{
+				BYTE* pu8_Src = (BYTE*)pi_Data->Scan0 + Y * pi_Data->Stride;
+				BYTE* pu8_Dst = i_Mat.ptr<BYTE>(Y);
+
+				for (UINT X = 0; X<pi_Data->Width; X++)
+				{
+					pu8_Dst[X] = u8_GrayLUT[pu8_Src[X]];
+				}
 			}
 		}
 		else // 24 Bit / 32 Bit
@@ -130,7 +162,7 @@ static void imageToMat(Image image, cv::Mat& mat) {
 		Gdiplus::BitmapData i_Data;
 		Gdiplus::Rect k_Rect(0, 0, image->GetWidth(), image->GetHeight());
 		if (!image->LockBits(&k_Rect, Gdiplus::ImageLockModeRead, image->GetPixelFormat(), &i_Data)) {
-			mat = CopyBmpDataToMat(&i_Data);
+			mat = CopyBmpDataToMat(image, &i_Data);
 			image->UnlockBits(&i_Data);
 		}
 #endif
@@ -218,32 +250,69 @@ void opencv_decode_qrcode(PA_PluginParameters params, PA_long32 selector) {
     
     PA_ObjectRef status = PA_CreateObject();
     
+    Image image = NULL;
+    bool success = false;
+    std::string errorMessage;
+    bool hasError = false;
+    
     cv::Mat mat, straight_qrcode;
-    
-    Image image = pictureToImage(p);
-    
-    imageToMat(image, mat);
-    
-    cv::QRCodeDetector detector;
-    
     std::vector<std::string> decoded_info;
     std::vector<cv::Point> points;
     std::vector<cv::Mat> straight_barcodes;
     
-    if(eps != 0.0) {
-        detector.setEpsX(eps);
-        detector.setEpsY(eps);
+    try
+    {
+        image = pictureToImage(p);
+        
+        imageToMat(image, mat);
+        
+        if(mat.empty()) {
+            throw std::runtime_error("could not read image data");
+        }
+        
+        cv::QRCodeDetector detector;
+        
+        if(eps != 0.0) {
+            detector.setEpsX(eps);
+            detector.setEpsY(eps);
+        }
+        
+        if(selector == 1) {
+            success = detector.detectAndDecodeMulti(mat, decoded_info, points, straight_barcodes);
+        }else{
+            success = detector.detectMulti(mat, points);
+        }
     }
-    
-    bool success;
-    
-    if(selector == 1) {
-        success = detector.detectAndDecodeMulti(mat, decoded_info, points, straight_barcodes);
-    }else{
-        success = detector.detectMulti(mat, points);
+    catch(const cv::Exception& e)
+    {
+        hasError = true;
+        errorMessage = e.what();
+        success = false;
+    }
+    catch(const std::exception& e)
+    {
+        hasError = true;
+        errorMessage = e.what();
+        success = false;
+    }
+    catch(...)
+    {
+        hasError = true;
+        errorMessage = "unknown error";
+        success = false;
     }
     
     ob_set_b(status, L"success", success);
+    
+    if(hasError) {
+        C_TEXT u;
+        u.setUTF8String((const uint8_t *)errorMessage.c_str(), (uint32_t)errorMessage.length());
+        PA_Unistring ustr = PA_CreateUnistring((PA_Unichar *)u.getUTF16StringPtr());
+        PA_Variable v = PA_CreateVariable(eVK_Unistring);
+        PA_SetStringVariable(&v, &ustr);
+        ob_set_c(status, L"error", v);
+        PA_ClearVariable(&v);
+    }
     
     if(success) {
         
