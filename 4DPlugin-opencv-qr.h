@@ -11,6 +11,20 @@
 #ifndef PLUGIN_OPENCV_QR_H
 #define PLUGIN_OPENCV_QR_H
 
+// Must be defined before ANYTHING that might pull in <windows.h> (this
+// header itself, 4DPluginAPI.h, OpenCV's Windows core headers, and
+// gdiplus.h all can). Without it, whichever of those happens to include
+// <windows.h> first also drags in the legacy <winsock.h>; when
+// 4DPlugin-JSON.h later includes <winsock2.h>/<ws2tcpip.h> (its own
+// "winsock2 before windows" ordering only protects against headers
+// included after it, not before), the two winsock generations collide -
+// sockaddr/fd_set redefinitions and a cascade of ws2tcpip.h errors.
+// WIN32_LEAN_AND_MEAN stops windows.h from auto-including winsock.h at
+// all, so the collision can't happen regardless of include order.
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+
 #include "4DPluginAPI.h"
 
 #if VERSIONMAC
