@@ -3,20 +3,18 @@
 [![license](https://img.shields.io/github/license/miyako/4d-plugin-opencv-qr)](LICENSE)
 ![downloads](https://img.shields.io/github/downloads/miyako/4d-plugin-opencv-qr/total)
 
-# 4d-plugin-opencv-qr
-
 `opencv-qr` adds two 4D language commands that use OpenCV's QR code engine to locate and, optionally, decode QR codes found in a **Picture**. Both commands accept the same parameters and can find **multiple QR codes in a single image** in one call.
 
 Both commands are declared `threadSafe` in the plugin manifest, so they can be called from preemptive processes as well as the main process.
 
 | Command | Decodes content? | Use when… |
 |---|---|---|
-| `opencv decode qrcode` | Yes | You need the text stored in the QR code(s) |
-| `opencv detect qrcode` | No | You only need to know *if/where* a QR code is (faster, skips decoding) |
+| [`opencv decode qrcode`](#opencv-decode-qrcode) | Yes | You need the text stored in the QR code(s) |
+| [`opencv detect qrcode`](#opencv-detect-qrcode) | No | You only need to know *if/where* a QR code is (faster, skips decoding) |
 
 ---
 
-## `opencv decode qrcode`
+## opencv decode qrcode
 
 ```4d
 $status:=opencv decode qrcode(picture) // epsilon omitted
@@ -85,18 +83,18 @@ End if
 
 ---
 
-## `opencv detect qrcode`
+## opencv detect qrcode
 
 ```4d
 $status:=opencv detect qrcode(picture) // epsilon omitted
 $status:=opencv detect qrcode(picture; epsilon)
 ```
 
-Locates every QR code in `picture` — returning their corner positions — **without** decoding their content. Use this when you only need to confirm presence/position of QR codes (for example, to draw bounding boxes, or to decide whether it's worth calling `opencv decode qrcode` at all), since skipping the decode step is faster.
+Locates every QR code in `picture` — returning their corner positions — **without** decoding their content. Use this when you only need to confirm presence/position of QR codes (for example, to draw bounding boxes, or to decide whether it's worth calling [`opencv decode qrcode`](#opencv-decode-qrcode) at all), since skipping the decode step is faster.
 
 ### Parameters
 
-Same as `opencv decode qrcode` above: `picture` (required), `epsilon` (optional).
+Same as [`opencv decode qrcode`](#opencv-decode-qrcode) above: `picture` (required), `epsilon` (optional).
 
 ### Result object
 
@@ -104,7 +102,7 @@ Same as `opencv decode qrcode` above: `picture` (required), `epsilon` (optional)
 |---|---|---|---|
 | `success` | Boolean | always | `True` if at least one QR code was located. |
 | `error` | Text | only on an internal failure | Same meaning as above. |
-| `corners` | Collection of Object | `success` is `True` | Same format as `opencv decode qrcode`'s `corners` (4 points per detected code). |
+| `corners` | Collection of Object | `success` is `True` | Same format as [`opencv decode qrcode`](#opencv-decode-qrcode)'s `corners` (4 points per detected code). |
 
 Note: `values` and `images` are **not** returned by this command, since no decoding takes place.
 
