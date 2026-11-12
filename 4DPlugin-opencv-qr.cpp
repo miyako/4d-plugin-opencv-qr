@@ -181,38 +181,40 @@ static void disposeImage(Image image) {
     }
 }
 
+// consumes p: the caller's retained duplicate is disposed here
 static Image pictureToImage(PA_Picture p) {
     
     if(!PA_IsCompiled(0)) 
     {
-        return (Image)PA_CreateNativePictureForScreen(p);
+        Image image = (Image)PA_CreateNativePictureForScreen(p);
         /* this image needs to be released */
+        PA_DisposePicture(p);
+        return image;
     }else
     {
         Image image = NULL;
         
         //convert picture
         PA_Variable args[3];
-        args[0] = PA_CreateVariable(eVK_Picture);
+        // eVK_Undefined: eVK_Picture/eVK_Unistring would allocate a value that the shallow PA_Set*Variable below overwrites and leaks
+        args[0] = PA_CreateVariable(eVK_Undefined);
         PA_SetPictureVariable(&args[0], p);
-        args[1] = PA_CreateVariable(eVK_Unistring);
+        args[1] = PA_CreateVariable(eVK_Undefined);
         PA_Unistring ustr = PA_CreateUnistring((PA_Unichar *)u".bmp");
         PA_SetStringVariable(&args[1], &ustr);
         
         PA_ExecuteCommandByID(CONVERT_PICTURE, args, 2);
         
-        p = PA_GetPictureVariable(args[0]);/* the picture has been converted */
-        
-        PA_SetPictureVariable(&args[0], NULL);
-        
-        PA_ClearVariable(&args[0]);
-        PA_ClearVariable(&args[1]);
+        p = PA_GetPictureVariable(args[0]);/* the picture has been converted; args[0] still owns it */
         
         PA_Handle h = PA_NewHandle(0);
         
         PA_ErrorCode err = eER_NoErr;
         PA_GetPictureData(p, 1, h);
         err = PA_GetLastError();
+        
+        PA_ClearVariable(&args[0]);
+        PA_ClearVariable(&args[1]);
         
         if(err == eER_NoErr)
         {
@@ -321,7 +323,8 @@ void opencv_decode_qrcode(PA_PluginParameters params, PA_long32 selector) {
             PA_CollectionRef values = PA_CreateCollection();
             for(auto it = decoded_info.begin(); it != decoded_info.end(); ++it) {
                 std::string info = *it;
-                PA_Variable v = PA_CreateVariable(eVK_Unistring);
+                // eVK_Undefined: eVK_Unistring would allocate a value that the shallow PA_SetStringVariable below overwrites and leaks
+                PA_Variable v = PA_CreateVariable(eVK_Undefined);
                 C_TEXT u;
                 u.setUTF8String((const uint8_t *)info.c_str(), (uint32_t)info.length());
                 PA_Unistring ustr = PA_CreateUnistring((PA_Unichar *)u.getUTF16StringPtr());
@@ -337,7 +340,8 @@ void opencv_decode_qrcode(PA_PluginParameters params, PA_long32 selector) {
                 std::vector<uchar> buf;
                 if(imencode(".png", image, buf)) {
                     PA_Picture straight = PA_CreatePicture(&buf[0], (PA_long32)buf.size());
-                    PA_Variable v = PA_CreateVariable(eVK_Picture);
+                    // eVK_Undefined: eVK_Picture would allocate a value that the shallow PA_SetPictureVariable below overwrites and leaks
+                    PA_Variable v = PA_CreateVariable(eVK_Undefined);
                     PA_SetPictureVariable(&v, straight);
                     PA_SetCollectionElement(images, PA_GetCollectionLength(images), v);
                     PA_ClearVariable(&v);
